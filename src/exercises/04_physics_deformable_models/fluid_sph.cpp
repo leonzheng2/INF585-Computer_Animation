@@ -7,15 +7,14 @@
 
 using namespace vcl;
 
-
-
 // Random value generator
 std::default_random_engine generator;
 std::uniform_real_distribution<float> distrib(0.0,1.0);
+
 // Counter used to save image on hard drive
 int counter_image = 0;
 
-//Kernel
+// Kernel
 double smoothKernel(vcl::vec3 p, float h) {
     double dist = sqrt(double(dot(p,p)));
     if(dist > h)
@@ -49,18 +48,22 @@ void scene_exercise::initialize_sph()
     const float m = rho0*h*h;
 
     // Initial particle spacing (relative to h)
-    const float c = 0.95f;
+    const float c = 0.85f;
 
+    // Scale the size of the particle cube
+    const float scale_factor = 0.7;
 
     // Fill a square with particles
     const float epsilon = 1e-3f;
-    for(float x=h; x<1.0f-h; x=x+c*h)
+    for(float x=h; x<scale_factor*cube_size-h; x=x+c*h)
     {
-        for(float y=-1.0f+h; y<0.0f-h; y=y+c*h)
+        for(float y=-scale_factor*cube_size+h; y<0.0f-h; y=y+c*h)
         {
-            particle_element particle;
-            particle.p = {x+epsilon*distrib(generator),y,0}; // a zero value in z position will lead to a 2D simulation
-            particles.push_back(particle);
+            for (float z=h; z < scale_factor*cube_size-h; z=z+c*h) {
+                particle_element particle;
+                particle.p = {x+epsilon*distrib(generator),y,z+epsilon * distrib(generator)}; // a zero value in z position will lead to a 2D simulation
+                particles.push_back(particle);
+            }
         }
     }
 
@@ -79,15 +82,16 @@ void scene_exercise::setup_data(std::map<std::string,GLuint>& shaders, scene_str
     shaders["segment_immediate_mode"] = create_shader_program("shaders/segment_immediate_mode/segment_immediate_mode.vert.glsl","shaders/segment_immediate_mode/segment_immediate_mode.frag.glsl");
 
     sphere = mesh_drawable( mesh_primitive_sphere(1.0f));
-    std::vector<vec3> borders_segments = {{-1,-1,-0.1f},{1,-1,-0.1f}, {1,-1,-0.1f},{1,1,-0.1f}, {1,1,-0.1f},{-1,1,-0.1f}, {-1,1,-0.1f},{-1,-1,-0.1f},
-                                          {-1,-1,0.1f} ,{1,-1,0.1f},  {1,-1,0.1f}, {1,1,0.1f},  {1,1,0.1f}, {-1,1,0.1f},  {-1,1,0.1f}, {-1,-1,0.1f},
-                                          {-1,-1,-0.1f},{-1,-1,0.1f}, {1,-1,-0.1f},{1,-1,0.1f}, {1,1,-0.1f},{1,1,0.1f},   {-1,1,-0.1f},{-1,1,0.1f}};
+    voxel = mesh_drawable( mesh_primitive_parallelepiped({0., 0., 0.}));
+    std::vector<vec3> borders_segments = {{-cube_size,-cube_size,-cube_size},{cube_size,-cube_size,-cube_size}, {cube_size,-cube_size,-cube_size},{cube_size,cube_size,-cube_size}, {cube_size,cube_size,-cube_size},{-cube_size,cube_size,-cube_size}, {-cube_size,cube_size,-cube_size},{-cube_size,-cube_size,-cube_size},
+                                          {-cube_size,-cube_size,cube_size} ,{cube_size,-cube_size,cube_size},  {cube_size,-cube_size,cube_size}, {cube_size,cube_size,cube_size},  {cube_size,cube_size,cube_size}, {-cube_size,cube_size,cube_size},  {-cube_size,cube_size,cube_size}, {-cube_size,-cube_size,cube_size},
+                                          {-cube_size,-cube_size,-cube_size},{-cube_size,-cube_size,cube_size}, {cube_size,-cube_size,-cube_size},{cube_size,-cube_size,cube_size}, {cube_size,cube_size,-cube_size},{cube_size,cube_size,cube_size},   {-cube_size,cube_size,-cube_size},{-cube_size,cube_size,cube_size}};
     borders = segments_gpu(borders_segments);
     borders.uniform_parameter.color = {0,0,0};
 
 
     initialize_sph();
-    initialize_field_image();
+    // initialize_field_image();
 
     gui_param.display_field = true;
     gui_param.display_particles = true;
@@ -163,7 +167,7 @@ void scene_exercise::frame_draw(std::map<std::string,GLuint>& shaders, scene_str
         vec3& v = particles[k].v;
         vec3& a = particles[k].a;
 
-        std::cout << a << std::endl;
+        // std::cout << a << std::endl;
 //        a = {0,-9.81f,0};
 
         v = (1-h*damping)*v + h*a;
@@ -176,9 +180,11 @@ void scene_exercise::frame_draw(std::map<std::string,GLuint>& shaders, scene_str
         vec3& p = particles[k].p;
         vec3& v = particles[k].v;
 
-        if( p.y<-1 ) {p.y = -1; v.y *= -0.5f;}
-        if( p.x<-1 ) {p.x = -1; v.x *= -0.5f;}
-        if( p.x>1 )  {p.x = 1;  v.x *= -0.5f;}
+        if( p.y<-cube_size ) {p.y = -cube_size; v.y *= -0.5f;}
+        if( p.x<-cube_size ) {p.x = -cube_size; v.x *= -0.5f;}
+        if( p.x>cube_size )  {p.x = cube_size;  v.x *= -0.5f;}
+        if( p.z<-cube_size ) {p.z = -cube_size; v.z *= -0.5f;}
+        if( p.z>cube_size )  {p.z = cube_size;  v.z *= -0.5f;}
     }
 
     display(shaders, scene, gui);
@@ -208,42 +214,73 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
     // Update field image
     if(gui_param.display_field)
     {
-        const size_t im_h = field_image.im.height;
-        const size_t im_w = field_image.im.width;
-        std::vector<unsigned char>& im_data = field_image.im.data;
-        for(size_t ky=0; ky<im_h; ++ky)
-        {
-            for(size_t kx=0; kx<im_w; ++kx)
-            {
-                const float x = 2.0f*kx/(im_w-1.0f)-1.0f;
-                const float y = 1.0f-2.0f*ky/(im_h-1.0f);
-
-                const float f = evaluate_display_field({x,y,0.0f});
-                // adapt this value to set the iso-value of interest for the liquid surface
-                const float value = 0.5f*f;
-
-                float r = 1-value;
-                float g = 1-value;
-                float b = 1;
-
-
-                im_data[4*(kx+im_w*ky)]   = static_cast<unsigned char>(255*std::max(std::min(r,1.0f),0.0f));
-                im_data[4*(kx+im_w*ky)+1] = static_cast<unsigned char>(255*std::max(std::min(g,1.0f),0.0f));
-                im_data[4*(kx+im_w*ky)+2] = static_cast<unsigned char>(255*std::max(std::min(b,1.0f),0.0f));
-                im_data[4*(kx+im_w*ky)+3] = 255;
+        const float resolution = 30;
+        const float threshold = 0.05;
+        float voxel_size = 2 * cube_size / resolution;
+        voxel.uniform_parameter.scaling = voxel_size;
+        float x = -cube_size;
+        float y = -cube_size;
+        float z = -cube_size;
+        for(int i = 0; i < resolution; i++) {
+            for(int j = 0; j < resolution; j++) {
+                for(int k = 0; k < resolution; k++) {
+                    const float f = evaluate_display_field({x -voxel_size / 2,y -voxel_size / 2,z -voxel_size / 2});
+                    const float value = 0.5f * f;
+                    if (value > threshold) {
+                        float r = 1-value;
+                        float g = 1-value;
+                        float b = 1;
+                        voxel.uniform_parameter.color = {r, g, b};
+                        voxel.uniform_parameter.translation = {x, y, z};
+                        voxel.draw(shaders["mesh"], scene.camera);
+                    }
+                    z += voxel_size;
+                }
+                z = -cube_size;
+                y += voxel_size;
             }
+            z = -cube_size;
+            y = -cube_size;
+            x += voxel_size;
         }
 
 
+        
+        
+        // const size_t im_h = field_image.im.height;
+        // const size_t im_w = field_image.im.width;
+        // std::vector<unsigned char>& im_data = field_image.im.data;
+        // for(size_t ky=0; ky<im_h; ++ky)
+        // {
+        //     for(size_t kx=0; kx<im_w; ++kx)
+        //     {
+        //         const float x = 2.0f*kx/(im_w-1.0f)-1.0f;
+        //         const float y = 1.0f-2.0f*ky/(im_h-1.0f);
+        //
+        //         const float f = evaluate_display_field({x,y,0.0f});
+        //         // adapt this value to set the iso-value of interest for the liquid surface
+        //         const float value = 0.5f*f;
+        //
+        //         float r = 1-value;
+        //         float g = 1-value;
+        //         float b = 1;
+        //
+        //
+        //         im_data[4*(kx+im_w*ky)]   = static_cast<unsigned char>(255*std::max(std::min(r,1.0f),0.0f));
+        //         im_data[4*(kx+im_w*ky)+1] = static_cast<unsigned char>(255*std::max(std::min(g,1.0f),0.0f));
+        //         im_data[4*(kx+im_w*ky)+2] = static_cast<unsigned char>(255*std::max(std::min(b,1.0f),0.0f));
+        //         im_data[4*(kx+im_w*ky)+3] = 255;
+        //     }
+        // }
 
         // Display texture
-        glBindTexture(GL_TEXTURE_2D, field_image.texture_id);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0,0, GLsizei(im_w), GLsizei(im_h), GL_RGBA, GL_UNSIGNED_BYTE, &im_data[0]);
-        glGenerateMipmap(GL_TEXTURE_2D);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        field_image.quad.draw(shaders["mesh"],scene.camera);
-        glBindTexture(GL_TEXTURE_2D, scene.texture_white);
+        // glBindTexture(GL_TEXTURE_2D, field_image.texture_id);
+        // glTexSubImage2D(GL_TEXTURE_2D, 0, 0,0, GLsizei(im_w), GLsizei(im_h), GL_RGBA, GL_UNSIGNED_BYTE, &im_data[0]);
+        // glGenerateMipmap(GL_TEXTURE_2D);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        // field_image.quad.draw(shaders["mesh"],scene.camera);
+        // glBindTexture(GL_TEXTURE_2D, scene.texture_white);
 
 
         // Save texture on hard drive
@@ -302,7 +339,7 @@ void scene_exercise::initialize_field_image()
 {
     size_t N = 50; // Image dimension (adapt this value to set the texture precision)
 
-    field_image.quad = mesh_primitive_quad({-1,-1,0},{1,-1,0},{-1,1,0});
+    field_image.quad = mesh_primitive_quad({-cube_size,-cube_size,0},{cube_size,-cube_size,0},{-cube_size,cube_size,0});
     field_image.im.width = N;
     field_image.im.height = N;
     field_image.im.data.resize(4*field_image.im.width*field_image.im.height);
