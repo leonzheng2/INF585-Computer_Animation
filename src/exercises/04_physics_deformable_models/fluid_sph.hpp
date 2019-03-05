@@ -50,6 +50,29 @@ struct gui_parameters
     bool save_field;
 };
 
+class uniform_grid
+{
+public:
+    uniform_grid(){}
+    uniform_grid(int n, const std::vector<float>& boundingBox, std::vector<particle_element>& particles); // Construct a grid in which each cell contains the pointers of the particles contained in the cell
+    std::vector<particle_element*> findPotentialNeighbors(particle_element part_i); // Using the acceleration structure to find potential neighbors of a particle for computing forces
+
+private:
+    int n; // Resolution of the grid
+    std::vector<std::vector<particle_element*>> cells; // n*n cells, each cell contains the pointers of the particles contained in the cell
+    // Bounding box of all particles
+    float xMin; // boundingBox[0]
+    float xMax; // boundingBox[1]
+    float yMin; // boundingBox[2]
+    float yMax; // boundingBox[3]
+    float zMin; // boundingBox[4]
+    float zMax; // boundingBox[5]
+
+    std::vector<int> findCellIndices(particle_element part); // Find the index of the cell containing the particle
+    inline int findCellIndex(std::vector<int> indices, int n){
+        return indices[2]+indices[1]*n+indices[0]*n*n;
+    }
+};
 
 struct scene_exercise : base_scene_exercise
 {
@@ -59,6 +82,7 @@ struct scene_exercise : base_scene_exercise
     void display(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui);
 
     std::vector<particle_element> particles;
+    uniform_grid grid;
     sph_parameters sph_param;
 
 
@@ -80,10 +104,5 @@ struct scene_exercise : base_scene_exercise
 
     vcl::timer_event timer;
 };
-
-
-
-
-
 
 #endif

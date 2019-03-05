@@ -8,7 +8,6 @@
 using namespace vcl;
 
 
-
 // Random value generator
 std::default_random_engine generator;
 std::uniform_real_distribution<float> distrib(0.0,1.0);
@@ -27,7 +26,6 @@ vcl::vec3 gradKernel(vcl::vec3 p, float h){
     double dist = sqrt(double(dot(p,p)));
     if(dist > h)
         return vcl::vec3(0, 0, 0);
-//    std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
     return -6*315/(64*M_PI*pow(double(h),5))*pow(1-pow(dist/double(h), 2), 2)*p;
 }
 
@@ -111,22 +109,16 @@ void scene_exercise::update_acceleration()
     update_pression();
 
     // Add pression force
-    bool print = false;
     for(particle_element& part_i: particles){
         vec3 f_pression(0., 0., 0.);
-        for(particle_element part_j: particles){
-            const vec3 v = - sph_param.m * (part_i.pression/pow(part_i.rho, 2) + part_j.pression/pow(part_j.rho, 2)) * gradKernel(part_i.p - part_j.p, sph_param.h);
+        const std::vector<particle_element*> neighbors = grid.findPotentialNeighbors(part_i);
+        std::cout << "Number of particles: " << particles.size() << std::endl;
+        std::cout << "Number of neighbors: " << neighbors.size() << std::endl;
+        for(particle_element* part_j: neighbors){
+            const vec3 v = - sph_param.m * (part_i.pression/pow(part_i.rho, 2) + part_j->pression/pow(part_j->rho, 2)) * gradKernel(part_i.p - part_j->p, sph_param.h);
             f_pression += v;
-            if(print){
-//                std::cout << "Gradient: " << gradKernel(part_i.p - part_j.p, sph_param.h) << std::endl;
-//                std::cout << "Densite: " << part_i.rho << "; " << part_j.rho << std::endl;
-//                std::cout << "Pression: " << part_i.pression << "; " << part_j.pression << std::endl;
-//                std::cout << "Vecteur: " << v << std::endl;
-//                print = false;
-            }
         }
         part_i.a += f_pression;
-//        std::cout << f_pression << std::endl;
     }
 
     // Add viscosity force
@@ -142,7 +134,6 @@ void scene_exercise::update_acceleration()
 }
 
 
-
 void scene_exercise::frame_draw(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui)
 {
     const float dt = timer.update();
@@ -150,6 +141,15 @@ void scene_exercise::frame_draw(std::map<std::string,GLuint>& shaders, scene_str
 
     // Force constant time step
     float h = dt<=1e-6f? 0.0f : timer.scale*0.003f;
+
+    // Create uniform grid
+    int n = 10;
+    std::vector<float> boundingBox;
+    for(int i=0; i<3; i++){
+        boundingBox.push_back(-1.0f);
+        boundingBox.push_back(1.0f);
+    }
+    grid = uniform_grid(n, boundingBox, particles);
 
     // Update acceleration
     update_acceleration();
@@ -319,10 +319,8 @@ void scene_exercise::update_density(){
         float density = 0;
         for(particle_element part_j: particles){
             density += sph_param.m * smoothKernel(part_i.p - part_j.p, sph_param.h);
-//            std::cout << "Kernel: " << smoothKernel(part_i.p - part_j.p, sph_param.h) << std::endl;
         }
         part_i.rho = density;
-//        std::cout << part_i.rho << std::endl;
     }
 }
 
@@ -330,9 +328,187 @@ void scene_exercise::update_pression(){
     for(particle_element& part_i: particles){
         // Update pression of particle i
         part_i.pression = sph_param.stiffness * pow(part_i.rho/sph_param.rho0 - 1, 1.7);
-//        std::cout << "Pression: " << part_i.pression << std::endl;
-//        std::cout << "Density: " << part_i.rho << std::endl;
     }
 }
+
+std::vector<int> uniform_grid::findCellIndices(particle_element part){
+    std::vector<int> indices;
+    indices.push_back(floor((part.p.x-xMin)/(xMax-xMin) * n));
+    indices.push_back(floor((part.p.y-yMin)/(yMax-yMin) * n));
+    indices.push_back(floor((part.p.z-zMin)/(zMax-zMin) * n));
+    return indices;
+}
+
+uniform_grid::uniform_grid(int n, const std::vector<float>& boundingBox, std::vector<particle_element>& particles){
+    // Creating the bounding box
+    xMin = boundingBox[0];
+    xMax = boundingBox[1];
+    yMin = boundingBox[2];
+    yMax = boundingBox[3];
+    zMin = boundingBox[4];
+    zMax = boundingBox[5];
+
+    // Filling the cells with particles
+    cells.resize(n*n*n); // cell (i, j, k) is accessed with the index k+N*j+N^2*i
+    for(particle_element& part: particles){
+        // Add the pointer of the particle in the cell
+        int index = findCellIndex(findCellIndices(part), n);
+        cells[index].push_back(&part);
+    }
+}
+
+std::vector<particle_element*> uniform_grid::findPotentialNeighbors(particle_element part){
+    std::vector<int> indices = findCellIndices(part);
+    const int i = indices[0];
+    const int j = indices[1];
+    const int k = indices[2];
+
+    // TODO clean the code
+
+    std::vector<particle_element*> neighborsPointers = cells[findCellIndex(indices, n)];
+    // Corners
+    if(i-1>=0 && j-1>=0 && k-1>=0){
+        for(particle_element* neighbor: cells[(k-1)+n*(j-1)+n*n*(i-1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(i-1>=0 && j-1>=0 && k+1<n){
+        for(particle_element* neighbor: cells[(k+1)+n*(j-1)+n*n*(i-1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(i-1>=0 && j+1<n && k-1>=0){
+        for(particle_element* neighbor: cells[(k-1)+n*(j+1)+n*n*(i-1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(i-1>=0 && j+1<n && k+1<n){
+        for(particle_element* neighbor: cells[(k+1)+n*(j+1)+n*n*(i-1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(i+1<n && j-1>=0 && k-1>=0){
+        for(particle_element* neighbor: cells[(k-1)+n*(j-1)+n*n*(i+1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(i+1<n && j-1>=0 && k+1<n){
+        for(particle_element* neighbor: cells[(k+1)+n*(j-1)+n*n*(i+1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(i+1<n && j+1<n && k-1>=0){
+        for(particle_element* neighbor: cells[(k-1)+n*(j+1)+n*n*(i+1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(i+1<n && j+1<n && k+1>=0){
+        for(particle_element* neighbor: cells[(k+1)+n*(j+1)+n*n*(i+1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+
+    // Edges, k fixed
+    if(i-1>=0 && j-1>=0){
+        for(particle_element* neighbor: cells[k+n*(j-1)+n*n*(i-1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(i-1>=0 && j+1<n){
+        for(particle_element* neighbor: cells[k+n*(j+1)+n*n*(i-1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(i+1<n && j-1>=0){
+        for(particle_element* neighbor: cells[k+n*(j-1)+n*n*(i+1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(i+1<n && j+1<n){
+        for(particle_element* neighbor: cells[k+n*(j+1)+n*n*(i+1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+
+    // Edges, i fixed
+    if(k-1>=0 && j-1>=0){
+        for(particle_element* neighbor: cells[(k-1)+n*(j-1)+n*n*i]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(k-1>=0 && j+1<n){
+        for(particle_element* neighbor: cells[(k-1)+n*(j+1)+n*n*i]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(k+1<n && j-1>=0){
+        for(particle_element* neighbor: cells[(k+1)+n*(j-1)+n*n*i]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(k+1<n && j+1<n){
+        for(particle_element* neighbor: cells[(k+1)+n*(j+1)+n*n*i]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+
+    // Edges, j fixed
+    if(k-1>=0 && i-1>=0){
+        for(particle_element* neighbor: cells[(k-1)+n*j+n*n*(i-1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(k-1>=0 && i+1<n){
+        for(particle_element* neighbor: cells[(k-1)+n*j+n*n*(i+1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(k+1<n && i-1>=0){
+        for(particle_element* neighbor: cells[(k+1)+n*j+n*n*(i-1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(k+1<n && i+1<n){
+        for(particle_element* neighbor: cells[(k+1)+n*j+n*n*(i+1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+
+    // Centers
+    if(i-1>=0){
+        for(particle_element* neighbor: cells[k+n*j+n*n*(i-1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(i+1<n){
+        for(particle_element* neighbor: cells[k+n*j+n*n*(i+1)]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(j-1>=0){
+        for(particle_element* neighbor: cells[k+n*(j-1)+n*n*i]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(j+1<n){
+        for(particle_element* neighbor: cells[k+n*(j+1)+n*n*i]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(k-1>=0){
+        for(particle_element* neighbor: cells[(k-1)+n*j+n*n*i]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+    if(k+1<n){
+        for(particle_element* neighbor: cells[(k+1)+n*j+n*n*i]){
+            neighborsPointers.push_back(neighbor);
+        }
+    }
+
+    return neighborsPointers;
+}
+
+
 
 #endif
