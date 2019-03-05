@@ -34,7 +34,7 @@ vcl::vec3 gradKernel(vcl::vec3 p, float h){
 void scene_exercise::initialize_sph()
 {
     // Influence distance of a particle (size of the kernel)
-    const float h = 0.1f;
+    const float h = 0.05f;
 
     // Rest density (consider 1000 Kg/m^3)
     const float rho0 = 1000.0f;
@@ -43,7 +43,7 @@ void scene_exercise::initialize_sph()
     const float stiffness = 2000.0f;
 
     // Viscosity parameter
-    const float nu = 2.0f;
+    const float nu = 0.05f;
 
     // Total mass of a particle (consider rho0 h^2)
     const float m = rho0*h*h;
@@ -126,10 +126,18 @@ void scene_exercise::update_acceleration()
             }
         }
         part_i.a += f_pression;
-        std::cout << f_pression << std::endl;
+//        std::cout << f_pression << std::endl;
     }
 
-
+    // Add viscosity force
+    for(particle_element& part_i: particles){
+        vec3 f_viscosity(0., 0., 0.);
+        for(particle_element part_j: particles){
+            const vec3 v = sph_param.m/part_j.rho * dot(part_i.p-part_j.p, part_i.v-part_j.v)/(dot(part_i.p-part_j.p, part_i.p-part_j.p)+0.01*pow(sph_param.h, 2)) * gradKernel(part_i.p-part_j.p, sph_param.h);
+            f_viscosity += v;
+        }
+        part_i.a += 2*sph_param.nu*f_viscosity;
+    }
 
 }
 
