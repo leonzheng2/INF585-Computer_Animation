@@ -15,6 +15,21 @@ std::uniform_real_distribution<float> distrib(0.0,1.0);
 // Counter used to save image on hard drive
 int counter_image = 0;
 
+//Kernel
+double smoothKernel(vcl::vec3 p, float h) {
+    double dist = sqrt(double(dot(p,p)));
+    if(dist > h)
+        return 0;
+    return 315/(64*M_PI*pow(double(h),3))*pow(1-pow(dist/double(h), 2), 3);
+}
+
+vcl::vec3 gradKernel(vcl::vec3 p, float h){
+    double dist = sqrt(double(dot(p,p)));
+    if(dist > h)
+        return vcl::vec3(0, 0, 0);
+//    std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+    return -6*315/(64*M_PI*pow(double(h),5))*pow(1-pow(dist/double(h), 2), 2)*p;
+}
 
 void scene_exercise::initialize_sph()
 {
@@ -95,19 +110,26 @@ void scene_exercise::update_acceleration()
     update_density();
     update_pression();
 
-    std::cout << "coucou" << std::endl;
-
     // Add pression force
-    for(particle_element part_i: particles){
+    bool print = false;
+    for(particle_element& part_i: particles){
         vec3 f_pression(0., 0., 0.);
         for(particle_element part_j: particles){
             const vec3 v = - sph_param.m * (part_i.pression/pow(part_i.rho, 2) + part_j.pression/pow(part_j.rho, 2)) * gradKernel(part_i.p - part_j.p, sph_param.h);
-            std::cout << gradKernel(part_i.p - part_j.p, sph_param.h) << std::endl;
             f_pression += v;
+            if(print){
+//                std::cout << "Gradient: " << gradKernel(part_i.p - part_j.p, sph_param.h) << std::endl;
+//                std::cout << "Densite: " << part_i.rho << "; " << part_j.rho << std::endl;
+//                std::cout << "Pression: " << part_i.pression << "; " << part_j.pression << std::endl;
+//                std::cout << "Vecteur: " << v << std::endl;
+//                print = false;
+            }
         }
         part_i.a += f_pression;
-//        std::cout << f_pression << std::endl;
+        std::cout << f_pression << std::endl;
     }
+
+
 
 }
 
@@ -119,7 +141,7 @@ void scene_exercise::frame_draw(std::map<std::string,GLuint>& shaders, scene_str
     set_gui();
 
     // Force constant time step
-    float h = dt<=1e-6f? 0.0f : timer.scale*0.0003f;
+    float h = dt<=1e-6f? 0.0f : timer.scale*0.003f;
 
     // Update acceleration
     update_acceleration();
@@ -133,7 +155,8 @@ void scene_exercise::frame_draw(std::map<std::string,GLuint>& shaders, scene_str
         vec3& v = particles[k].v;
         vec3& a = particles[k].a;
 
-        a = {0,-9.81f,0};
+        std::cout << a << std::endl;
+//        a = {0,-9.81f,0};
 
         v = (1-h*damping)*v + h*a;
         p = p + h*v;
@@ -283,20 +306,24 @@ void scene_exercise::initialize_field_image()
 }
 
 void scene_exercise::update_density(){
-    for(particle_element part_i: particles){
+    for(particle_element& part_i: particles){
         // Update density of particle i
         float density = 0;
         for(particle_element part_j: particles){
-            density += sph_param.m * smoothKernel(part_j.p, sph_param.h);
+            density += sph_param.m * smoothKernel(part_i.p - part_j.p, sph_param.h);
+//            std::cout << "Kernel: " << smoothKernel(part_i.p - part_j.p, sph_param.h) << std::endl;
         }
         part_i.rho = density;
+//        std::cout << part_i.rho << std::endl;
     }
 }
 
 void scene_exercise::update_pression(){
-    for(particle_element part_i: particles){
+    for(particle_element& part_i: particles){
         // Update pression of particle i
-        part_i.pression = sph_param.stiffness * pow(part_i.rho/sph_param.rho0, 7);
+        part_i.pression = sph_param.stiffness * pow(part_i.rho/sph_param.rho0 - 1, 1.7);
+//        std::cout << "Pression: " << part_i.pression << std::endl;
+//        std::cout << "Density: " << part_i.rho << std::endl;
     }
 }
 

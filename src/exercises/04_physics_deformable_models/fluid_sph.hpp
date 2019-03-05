@@ -5,13 +5,9 @@
 #ifdef EXERCISE_FLUID_SPH
 
 // Kernel
-inline float smoothKernel(vcl::vec3 p, float h) {
-    return 315/(64*M_PI*pow(h,3))*pow(1-pow(sqrt(dot(p,p))/h, 2), 3);
-}
 
-inline vcl::vec3 gradKernel(vcl::vec3 p, float h){
-    return -6*315/(64*M_PI*pow(h,5))*pow(1-pow(sqrt(dot(p,p))/h, 2), 2)*p;
-}
+double smoothKernel(vcl::vec3 p, float h);
+vcl::vec3 gradKernel(vcl::vec3 p, float h);
 
 // SPH Particle
 struct particle_element
