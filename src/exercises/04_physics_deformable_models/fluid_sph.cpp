@@ -114,8 +114,9 @@ void scene_exercise::update_acceleration()
         const std::vector<particle_element*> neighbors = grid.findPotentialNeighbors(part_i);
         std::cout << "Number of particles: " << particles.size() << std::endl;
         std::cout << "Number of neighbors: " << neighbors.size() << std::endl;
-        for(particle_element* part_j: neighbors){
-            const vec3 v = - sph_param.m * (part_i.pression/pow(part_i.rho, 2) + part_j->pression/pow(part_j->rho, 2)) * gradKernel(part_i.p - part_j->p, sph_param.h);
+        for(size_t j=0; j<neighbors.size(); j++){
+            const particle_element part_j = *neighbors[j];
+            const vec3 v = - sph_param.m * (part_i.pression/pow(part_i.rho, 2) + part_j.pression/pow(part_j.rho, 2)) * gradKernel(part_i.p - part_j.p, sph_param.h);
             f_pression += v;
         }
         part_i.a += f_pression;
@@ -143,11 +144,11 @@ void scene_exercise::frame_draw(std::map<std::string,GLuint>& shaders, scene_str
     float h = dt<=1e-6f? 0.0f : timer.scale*0.003f;
 
     // Create uniform grid
-    int n = 10;
+    int n = floor(2.2f/sph_param.h);
     std::vector<float> boundingBox;
     for(int i=0; i<3; i++){
-        boundingBox.push_back(-1.0f);
-        boundingBox.push_back(1.0f);
+        boundingBox.push_back(-1.1f);
+        boundingBox.push_back(1.1f);
     }
     grid = uniform_grid(n, boundingBox, particles);
 
@@ -162,9 +163,6 @@ void scene_exercise::frame_draw(std::map<std::string,GLuint>& shaders, scene_str
         vec3& p = particles[k].p;
         vec3& v = particles[k].v;
         vec3& a = particles[k].a;
-
-        std::cout << a << std::endl;
-//        a = {0,-9.81f,0};
 
         v = (1-h*damping)*v + h*a;
         p = p + h*v;
@@ -331,15 +329,18 @@ void scene_exercise::update_pression(){
     }
 }
 
-std::vector<int> uniform_grid::findCellIndices(particle_element part){
-    std::vector<int> indices;
+std::vector<size_t> uniform_grid::findCellIndices(const particle_element& part) const{
+    std::vector<size_t> indices;
     indices.push_back(floor((part.p.x-xMin)/(xMax-xMin) * n));
     indices.push_back(floor((part.p.y-yMin)/(yMax-yMin) * n));
     indices.push_back(floor((part.p.z-zMin)/(zMax-zMin) * n));
+//    std::cout << "Position: (" << part.p.x << ", " << part.p.y << ", " << part.p.z << ")" << std::endl;
+//    std::cout << "Indices: (" << indices[0] << ", " << indices[1] << ", " << indices[2] << ")" << std::endl;
     return indices;
 }
 
-uniform_grid::uniform_grid(int n, const std::vector<float>& boundingBox, std::vector<particle_element>& particles){
+uniform_grid::uniform_grid(size_t n, const std::vector<float>& boundingBox, std::vector<particle_element>& particles){
+    this->n = n;
     // Creating the bounding box
     xMin = boundingBox[0];
     xMax = boundingBox[1];
@@ -348,20 +349,34 @@ uniform_grid::uniform_grid(int n, const std::vector<float>& boundingBox, std::ve
     zMin = boundingBox[4];
     zMax = boundingBox[5];
 
+//    // Filling the cells with particles
+//    cells.resize(n*n*n); // cell (i, j, k) is accessed with the index k+N*j+N^2*i
+//    for(size_t i=0; i<particles.size(); i++){
+//        particle_element part = particles[i];
+//        // Add the pointer of the particle in the cell
+//        const size_t index = findCellIndex(findCellIndices(part), n);
+//        if(index < n*n*n){
+//            std::cout << index << std::endl;
+//        } else {
+//            std::cout << "Out of bound" << std::endl;
+//            std::cout << index << std::endl;
+//        }
+//        cells[index].push_back(&part);
+//    }
     // Filling the cells with particles
     cells.resize(n*n*n); // cell (i, j, k) is accessed with the index k+N*j+N^2*i
     for(particle_element& part: particles){
         // Add the pointer of the particle in the cell
         int index = findCellIndex(findCellIndices(part), n);
         cells[index].push_back(&part);
-    }
+}
 }
 
-std::vector<particle_element*> uniform_grid::findPotentialNeighbors(particle_element part){
-    std::vector<int> indices = findCellIndices(part);
-    const int i = indices[0];
-    const int j = indices[1];
-    const int k = indices[2];
+std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const particle_element& part){
+    std::vector<size_t> indices = findCellIndices(part);
+    const size_t i = indices[0];
+    const size_t j = indices[1];
+    const size_t k = indices[2];
 
     // TODO clean the code
 
