@@ -112,8 +112,8 @@ void scene_exercise::update_acceleration()
     for(particle_element& part_i: particles){
         vec3 f_pression(0., 0., 0.);
         const std::vector<particle_element*> neighbors = grid.findPotentialNeighbors(part_i);
-        std::cout << "Number of particles: " << particles.size() << std::endl;
-        std::cout << "Number of neighbors: " << neighbors.size() << std::endl;
+//        std::cout << "Number of particles: " << particles.size() << std::endl;
+//        std::cout << "Number of neighbors: " << neighbors.size() << std::endl;
         for(size_t j=0; j<neighbors.size(); j++){
             const particle_element part_j = *neighbors[j];
             const vec3 v = - sph_param.m * (part_i.pression/pow(part_i.rho, 2) + part_j.pression/pow(part_j.rho, 2)) * gradKernel(part_i.p - part_j.p, sph_param.h);
@@ -125,7 +125,9 @@ void scene_exercise::update_acceleration()
     // Add viscosity force
     for(particle_element& part_i: particles){
         vec3 f_viscosity(0., 0., 0.);
-        for(particle_element part_j: particles){
+        const std::vector<particle_element*> neighbors = grid.findPotentialNeighbors(part_i);
+        for(size_t j=0; j<neighbors.size(); j++){
+            const particle_element part_j = *neighbors[j];
             const vec3 v = sph_param.m/part_j.rho * dot(part_i.p-part_j.p, part_i.v-part_j.v)/(dot(part_i.p-part_j.p, part_i.p-part_j.p)+0.01*pow(sph_param.h, 2)) * gradKernel(part_i.p-part_j.p, sph_param.h);
             f_viscosity += v;
         }
@@ -315,7 +317,9 @@ void scene_exercise::update_density(){
     for(particle_element& part_i: particles){
         // Update density of particle i
         float density = 0;
-        for(particle_element part_j: particles){
+        const std::vector<particle_element*> neighbors = grid.findPotentialNeighbors(part_i);
+        for(size_t j=0; j<neighbors.size(); j++){
+            const particle_element part_j = *neighbors[j];
             density += sph_param.m * smoothKernel(part_i.p - part_j.p, sph_param.h);
         }
         part_i.rho = density;
@@ -349,20 +353,6 @@ uniform_grid::uniform_grid(size_t n, const std::vector<float>& boundingBox, std:
     zMin = boundingBox[4];
     zMax = boundingBox[5];
 
-//    // Filling the cells with particles
-//    cells.resize(n*n*n); // cell (i, j, k) is accessed with the index k+N*j+N^2*i
-//    for(size_t i=0; i<particles.size(); i++){
-//        particle_element part = particles[i];
-//        // Add the pointer of the particle in the cell
-//        const size_t index = findCellIndex(findCellIndices(part), n);
-//        if(index < n*n*n){
-//            std::cout << index << std::endl;
-//        } else {
-//            std::cout << "Out of bound" << std::endl;
-//            std::cout << index << std::endl;
-//        }
-//        cells[index].push_back(&part);
-//    }
     // Filling the cells with particles
     cells.resize(n*n*n); // cell (i, j, k) is accessed with the index k+N*j+N^2*i
     for(particle_element& part: particles){
