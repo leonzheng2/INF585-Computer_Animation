@@ -217,15 +217,19 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
         }
     }
 
+<<<<<<< HEAD
     // Grid structure for accelerate voxel
     int n = floor(cube_size * 2.2/(field_image.voxel_influence*1.1));
-    const int display_method = 2;
     std::vector<float> boundingBox;
     for(int i=0; i<3; i++){
         boundingBox.push_back(-1.1*cube_size);
         boundingBox.push_back(1.1*cube_size);
     }
     voxel_grid = uniform_grid(n, boundingBox, particles);
+=======
+
+    const int display_method = 2;
+>>>>>>> 0bd92de9ed7a473a8a13578a0e88788b6938a2a8
 
     // Update field image
     if(gui_param.display_field)
@@ -348,12 +352,16 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
                                 new_connectivity.push_back(new_triangle);
                             }
                         }
+
                         z += voxel_size;
+
                     }
 
                     z = -cube_size;
                     y += voxel_size;
 
+<<<<<<< HEAD
+=======
                 }
 
                 z = -cube_size;
@@ -372,6 +380,8 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
             mesh_drawable liquid_drawable = mesh_drawable(liquid);
             liquid_drawable.draw(shaders["mesh"], scene.camera);
         }
+            
+>>>>>>> 0bd92de9ed7a473a8a13578a0e88788b6938a2a8
         // const size_t im_h = field_image.im.height;
         // const size_t im_w = field_image.im.width;
         // std::vector<unsigned char>& im_data = field_image.im.data;
@@ -546,6 +556,13 @@ uniform_grid::uniform_grid(size_t n, const std::vector<float>& boundingBox, std:
     }
 }
 
+<<<<<<< HEAD
+std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const vcl::vec3& p){
+//    std::cout<< "Finding potential neighbors..." << std::endl;
+
+    std::vector<size_t> indices = findCellIndices(p);
+
+=======
 vec3 vertexInterpolation(float threshold, vec3 p1, vec3 p2, float val1, float val2) {
     float mu;
     vec3 p = {0, 0, 0};
@@ -556,11 +573,9 @@ vec3 vertexInterpolation(float threshold, vec3 p1, vec3 p2, float val1, float va
     return p;
 }
 
-std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const vcl::vec3& p){
-//    std::cout<< "Finding potential neighbors..." << std::endl;
-
-    std::vector<size_t> indices = findCellIndices(p);
-
+std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const particle_element& part){
+    std::vector<size_t> indices = findCellIndices(part);
+>>>>>>> 0bd92de9ed7a473a8a13578a0e88788b6938a2a8
     const int N = n;
     const int i = indices[0];
     const int j = indices[1];
