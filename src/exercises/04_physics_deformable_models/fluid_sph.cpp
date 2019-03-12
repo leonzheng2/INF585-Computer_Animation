@@ -397,14 +397,14 @@ uniform_grid::uniform_grid(size_t n, const std::vector<float>& boundingBox, std:
         // Add the pointer of the particle in the cell
         int index = findCellIndex(findCellIndices(part), n);
         cells[index].push_back(&part);
-}
+    }
 }
 
 std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const particle_element& part){
     std::vector<size_t> indices = findCellIndices(part);
-    const size_t i = indices[0];
-    const size_t j = indices[1];
-    const size_t k = indices[2];
+    const int i = indices[0];
+    const int j = indices[1];
+    const int k = indices[2];
 
     // TODO clean the code
 
