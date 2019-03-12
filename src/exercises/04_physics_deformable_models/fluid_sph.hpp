@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../exercises/base_exercise/base_exercise.hpp"
+#include<cstring>
 
 #ifdef EXERCISE_FLUID_SPH
 
@@ -10,6 +11,7 @@ const float cube_size = 0.5;
 
 double smoothKernel(vcl::vec3 p, float h);
 vcl::vec3 gradKernel(vcl::vec3 p, float h);
+vcl::vec3 vertexInterpolation(float threshold, vcl::vec3 p1, vcl::vec3 p2, float val1, float val2);
 
 // SPH Particle
 struct particle_element
@@ -102,6 +104,7 @@ struct scene_exercise : base_scene_exercise
     vcl::mesh_drawable sphere;
     vcl::mesh_drawable voxel;
     vcl::segments_drawable borders;
+    vcl::mesh liquid;
 
     vcl::timer_event timer;
 };

@@ -1,11 +1,15 @@
 
 #include "fluid_sph.hpp"
+// #include "transvoxel.hpp"
+#include "mctable.h"
 
 #include <random>
+#include <string.h>
 
 #ifdef EXERCISE_FLUID_SPH
 
 using namespace vcl;
+using index3 = std::array<unsigned int, 3>;
 
 // Random value generator
 std::default_random_engine generator;
@@ -47,7 +51,8 @@ void scene_exercise::initialize_sph()
     const float m = rho0*h*h;
 
     // Initial particle spacing (relative to h)
-    const float c = 0.85f;
+    const float c = 1;
+    // const float c = 0.85f;
 
     // Scale the size of the particle cube
     const float scale_factor = 0.7;
@@ -211,43 +216,156 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
     }
 
 
+    const int display_method = 2;
 
     // Update field image
     if(gui_param.display_field)
     {
-        const float resolution = 30;
-        const float threshold = 0.05;
+        const float resolution = 10;
         float voxel_size = 2 * cube_size / resolution;
+        const float threshold = 3;
         voxel.uniform_parameter.scaling = voxel_size;
-        float x = -cube_size;
-        float y = -cube_size;
-        float z = -cube_size;
-        for(int i = 0; i < resolution; i++) {
-            for(int j = 0; j < resolution; j++) {
-                for(int k = 0; k < resolution; k++) {
-                    const float f = evaluate_display_field({x -voxel_size / 2,y -voxel_size / 2,z -voxel_size / 2});
-                    const float value = 0.5f * f;
-                    if (value > threshold) {
-                        float r = 1-value;
-                        float g = 1-value;
-                        float b = 1;
-                        voxel.uniform_parameter.color = {r, g, b};
-                        voxel.uniform_parameter.translation = {x, y, z};
-                        voxel.draw(shaders["mesh"], scene.camera);
+
+        if (display_method == 1) {
+            // voxel
+            float x = -cube_size;
+            float y = -cube_size;
+            float z = -cube_size;
+            for(int i = 0; i < resolution; i++) {
+                for(int j = 0; j < resolution; j++) {
+                    for(int k = 0; k < resolution; k++) {
+                        const float f = evaluate_display_field({x -voxel_size / 2,y -voxel_size / 2,z -voxel_size / 2});
+                        const float value = 0.5f * f;
+                        if (value > threshold) {
+                            float r = 1-value;
+                            float g = 1-value;
+                            float b = 1;
+                            voxel.uniform_parameter.color = {r, g, b};
+                            voxel.uniform_parameter.translation = {x, y, z};
+                            voxel.draw(shaders["mesh"], scene.camera);
+                        }
+                        z += voxel_size;
                     }
-                    z += voxel_size;
+                    z = -cube_size;
+                    y += voxel_size;
                 }
                 z = -cube_size;
-                y += voxel_size;
+                y = -cube_size;
+                x += voxel_size;
             }
-            z = -cube_size;
-            y = -cube_size;
-            x += voxel_size;
+        } else if (display_method == 2) {
+            // marching cubes
+
+            vec3 corners[8];
+            vec3 vertList[12];
+            float densities[8];
+            std::vector<vec3> new_position;
+            std::vector<index3> new_connectivity;
+            
+            float x = -cube_size;
+            float y = -cube_size;
+            float z = -cube_size;
+            for (int i = 0; i < resolution; ++i) {
+                for (int j = 0; j < resolution; ++j) {
+                    for (int k = 0; k < resolution; ++k) {
+                        int cubeindex = 0;
+                        corners[0] = (vec3){x, y, z};
+                        corners[1] = (vec3){x + voxel_size, y, z};
+                        corners[2] = (vec3){x + voxel_size, y, z + voxel_size};
+                        corners[3] = (vec3){x, y, z + voxel_size};
+                        corners[4] = (vec3){x, y + voxel_size, z};
+                        corners[5] = (vec3){x + voxel_size, y + voxel_size, z};
+                        corners[6] = (vec3){x + voxel_size, y + voxel_size, z + voxel_size};
+                        corners[7] = (vec3){x, y + voxel_size, z + voxel_size};
+
+                        for (int l = 0; l < 8 ; ++l) {
+                            densities[l] = evaluate_display_field(corners[l]);
+                        }
+
+                        if (densities[0] < threshold) {cubeindex |= 1;};
+                        if (densities[1] < threshold) {cubeindex |= 2;};
+                        if (densities[2] < threshold) {cubeindex |= 4;};
+                        if (densities[3] < threshold) {cubeindex |= 8;};
+                        if (densities[4] < threshold) {cubeindex |= 16;};
+                        if (densities[5] < threshold) {cubeindex |= 32;};
+                        if (densities[6] < threshold) {cubeindex |= 64;};
+                        if (densities[7] < threshold) {cubeindex |= 128;};
+
+                        if (edgeTable[cubeindex] != 0 && edgeTable[cubeindex] != 255) {
+
+                            if ((edgeTable[cubeindex] & 1) == 1) {
+                                vertList[0] = vertexInterpolation(threshold, corners[0], corners[1], densities[0], densities[1]);
+                            }
+                            if ((edgeTable[cubeindex] & 2) == 2) {
+                                vertList[1] = vertexInterpolation(threshold, corners[1], corners[2], densities[1], densities[2]);
+                            }
+                            if ((edgeTable[cubeindex] & 4) == 4) {
+                                vertList[2] = vertexInterpolation(threshold, corners[2], corners[3], densities[2], densities[3]);
+                            }
+                            if ((edgeTable[cubeindex] & 8) == 8) {
+                                vertList[3] = vertexInterpolation(threshold, corners[3], corners[0], densities[3], densities[0]);
+                            }
+                            if ((edgeTable[cubeindex] & 16) == 16) {
+                                vertList[4] = vertexInterpolation(threshold, corners[4], corners[5], densities[4], densities[5]);
+                            }
+                            if ((edgeTable[cubeindex] & 32) == 32) {
+                                vertList[5] = vertexInterpolation(threshold, corners[5], corners[6], densities[5], densities[6]);
+                            }
+                            if ((edgeTable[cubeindex] & 64) == 64) {
+                                vertList[6] = vertexInterpolation(threshold, corners[6], corners[7], densities[6], densities[7]);
+                            }
+                            if ((edgeTable[cubeindex] & 128) == 128) {
+                                vertList[7] = vertexInterpolation(threshold, corners[7], corners[4], densities[7], densities[4]);
+                            }
+                            if ((edgeTable[cubeindex] & 256) == 256) {
+                                vertList[8] = vertexInterpolation(threshold, corners[0], corners[4], densities[0], densities[4]);
+                            }
+                            if ((edgeTable[cubeindex] & 512) == 512) {
+                                vertList[9] = vertexInterpolation(threshold, corners[1], corners[5], densities[1], densities[5]);
+                            }
+                            if ((edgeTable[cubeindex] & 1024) == 1024) {
+                                vertList[10] = vertexInterpolation(threshold, corners[2], corners[6], densities[2], densities[6]);
+                            }
+                            if ((edgeTable[cubeindex] & 2048) == 2048) {
+                                vertList[11] = vertexInterpolation(threshold, corners[3], corners[7], densities[3], densities[7]);
+                            }
+
+                            for (int l = 0; triTable[cubeindex][l] != -1; l += 3) {
+                                int index = (int)(new_position.size());
+                                new_position.push_back(vertList[triTable[cubeindex][l + 2]]);
+                                new_position.push_back(vertList[triTable[cubeindex][l + 1]]);
+                                new_position.push_back(vertList[triTable[cubeindex][l]]);
+                                index3 new_triangle{ {index, index + 1, index + 2} };
+                                new_connectivity.push_back(new_triangle);
+                            }
+                        }
+
+                        z += voxel_size;
+
+                    }
+
+                    z = -cube_size;
+                    y += voxel_size;
+
+                }
+
+                z = -cube_size;
+                y = -cube_size;
+                x += voxel_size;
+            }
+
+            liquid.position = new_position;
+            liquid.normal.clear();
+            liquid.color.clear();
+            liquid.texture_uv.clear();
+            liquid.connectivity = new_connectivity;
+            liquid.fill_color_uniform({0, 0, 1});
+            liquid.fill_empty_fields();
+            normal(liquid.position, liquid.connectivity, liquid.normal);
+            mesh_drawable liquid_drawable = mesh_drawable(liquid);
+            liquid_drawable.draw(shaders["mesh"], scene.camera);
         }
-
-
-        
-        
+            
         // const size_t im_h = field_image.im.height;
         // const size_t im_w = field_image.im.width;
         // std::vector<unsigned char>& im_data = field_image.im.data;
@@ -398,6 +516,16 @@ uniform_grid::uniform_grid(size_t n, const std::vector<float>& boundingBox, std:
         int index = findCellIndex(findCellIndices(part), n);
         cells[index].push_back(&part);
     }
+}
+
+vec3 vertexInterpolation(float threshold, vec3 p1, vec3 p2, float val1, float val2) {
+    float mu;
+    vec3 p = {0, 0, 0};
+    mu = (threshold - val1) / (val2 - val1);
+    p.x = p1.x + mu * (p2.x - p1.x);
+    p.y = p1.y + mu * (p2.y - p1.y);
+    p.z = p1.z + mu * (p2.z - p1.z);
+    return p;
 }
 
 std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const particle_element& part){
