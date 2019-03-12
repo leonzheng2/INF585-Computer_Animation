@@ -90,7 +90,9 @@ void scene_exercise::setup_data(std::map<std::string,GLuint>& shaders, scene_str
 
 
     initialize_sph();
-    // initialize_field_image();
+//     initialize_field_image();
+
+    field_image.voxel_influence = 0.2f;
 
     gui_param.display_field = true;
     gui_param.display_particles = true;
@@ -116,7 +118,7 @@ void scene_exercise::update_acceleration()
     // Add pression force
     for(particle_element& part_i: particles){
         vec3 f_pression(0., 0., 0.);
-        const std::vector<particle_element*> neighbors = grid.findPotentialNeighbors(part_i);
+        const std::vector<particle_element*> neighbors = sph_grid.findPotentialNeighbors(part_i.p);
 //        std::cout << "Number of particles: " << particles.size() << std::endl;
 //        std::cout << "Number of neighbors: " << neighbors.size() << std::endl;
         for(size_t j=0; j<neighbors.size(); j++){
@@ -130,7 +132,7 @@ void scene_exercise::update_acceleration()
     // Add viscosity force
     for(particle_element& part_i: particles){
         vec3 f_viscosity(0., 0., 0.);
-        const std::vector<particle_element*> neighbors = grid.findPotentialNeighbors(part_i);
+        const std::vector<particle_element*> neighbors = sph_grid.findPotentialNeighbors(part_i.p);
         for(size_t j=0; j<neighbors.size(); j++){
             const particle_element part_j = *neighbors[j];
             const vec3 v = sph_param.m/part_j.rho * dot(part_i.p-part_j.p, part_i.v-part_j.v)/(dot(part_i.p-part_j.p, part_i.p-part_j.p)+0.01*pow(sph_param.h, 2)) * gradKernel(part_i.p-part_j.p, sph_param.h);
@@ -151,13 +153,13 @@ void scene_exercise::frame_draw(std::map<std::string,GLuint>& shaders, scene_str
     float h = dt<=1e-6f? 0.0f : timer.scale*0.003f;
 
     // Create uniform grid
-    int n = floor(2.2f/sph_param.h);
+    int n = floor(cube_size * 2.2/sph_param.h);
     std::vector<float> boundingBox;
     for(int i=0; i<3; i++){
-        boundingBox.push_back(-1.1f);
-        boundingBox.push_back(1.1f);
+        boundingBox.push_back(-1.1*cube_size);
+        boundingBox.push_back(1.1*cube_size);
     }
-    grid = uniform_grid(n, boundingBox, particles);
+    sph_grid = uniform_grid(n, boundingBox, particles);
 
     // Update acceleration
     update_acceleration();
@@ -210,7 +212,14 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
         }
     }
 
-
+    // Grid structure for accelerate voxel
+    int n = floor(cube_size * 2.2/(field_image.voxel_influence*1.1));
+    std::vector<float> boundingBox;
+    for(int i=0; i<3; i++){
+        boundingBox.push_back(-1.1*cube_size);
+        boundingBox.push_back(1.1*cube_size);
+    }
+    voxel_grid = uniform_grid(n, boundingBox, particles);
 
     // Update field image
     if(gui_param.display_field)
@@ -245,9 +254,6 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
             x += voxel_size;
         }
 
-
-        
-        
         // const size_t im_h = field_image.im.height;
         // const size_t im_w = field_image.im.width;
         // std::vector<unsigned char>& im_data = field_image.im.data;
@@ -323,15 +329,36 @@ float scene_exercise::evaluate_display_field(const vcl::vec3& p)
     const float d = 0.1f;
 
     float field = 0.0f;
-    const size_t N = particles.size();
-    for(size_t i=0; i<N; ++i)
-    {
-        const vec3& pi = particles[i].p;
+
+    const std::vector<particle_element*> neighbors = voxel_grid.findPotentialNeighbors(p);
+
+    std::cout << "Size of neighbors: " << neighbors.size() << std::endl;
+
+    size_t count = 0;
+    for(size_t j=0; j<neighbors.size(); j++){
+        const particle_element part_j = *neighbors[j];
+        const vec3& pi = part_j.p;
         const float r  = norm(p-pi);
         const float u = r/d;
-        if( u < 4)
+        if(u < field_image.voxel_influence/d){
+            count += 1;
             field += std::exp(-u*u);
+        }
     }
+//    std::cout << "Number of particles having influence for voxel (using grid structure): " << count << std::endl;
+
+//    size_t count = 0;
+//    for(size_t j=0; j<particles.size(); j++){
+//        const particle_element part_j = particles[j];
+//        const vec3& pi = part_j.p;
+//        const float r  = norm(p-pi);
+//        const float u = r/d;
+//        if(u < 4){
+//            count += 1;
+//            field += std::exp(-u*u);
+//        }
+//    }
+//    std::cout << "Number of particles having influence for voxel (without grid structure): " << count << std::endl;
     return field;
 }
 
@@ -355,7 +382,7 @@ void scene_exercise::update_density(){
     for(particle_element& part_i: particles){
         // Update density of particle i
         float density = 0;
-        const std::vector<particle_element*> neighbors = grid.findPotentialNeighbors(part_i);
+        const std::vector<particle_element*> neighbors = sph_grid.findPotentialNeighbors(part_i.p);
         for(size_t j=0; j<neighbors.size(); j++){
             const particle_element part_j = *neighbors[j];
             density += sph_param.m * smoothKernel(part_i.p - part_j.p, sph_param.h);
@@ -371,12 +398,13 @@ void scene_exercise::update_pression(){
     }
 }
 
-std::vector<size_t> uniform_grid::findCellIndices(const particle_element& part) const{
+std::vector<size_t> uniform_grid::findCellIndices(const vec3& p) const{
     std::vector<size_t> indices;
-    indices.push_back(floor((part.p.x-xMin)/(xMax-xMin) * n));
-    indices.push_back(floor((part.p.y-yMin)/(yMax-yMin) * n));
-    indices.push_back(floor((part.p.z-zMin)/(zMax-zMin) * n));
-//    std::cout << "Position: (" << part.p.x << ", " << part.p.y << ", " << part.p.z << ")" << std::endl;
+    indices.push_back(floor((p.x-xMin)/(xMax-xMin) * n));
+    indices.push_back(floor((p.y-yMin)/(yMax-yMin) * n));
+    indices.push_back(floor((p.z-zMin)/(zMax-zMin) * n));
+//    std::cout << "Bounding box: (" << xMin << "; " << xMax << ")" << std::endl;
+//    std::cout << "Position: (" << p.x << ", " << p.y << ", " << p.z << ")" << std::endl;
 //    std::cout << "Indices: (" << indices[0] << ", " << indices[1] << ", " << indices[2] << ")" << std::endl;
     return indices;
 }
@@ -395,17 +423,22 @@ uniform_grid::uniform_grid(size_t n, const std::vector<float>& boundingBox, std:
     cells.resize(n*n*n); // cell (i, j, k) is accessed with the index k+N*j+N^2*i
     for(particle_element& part: particles){
         // Add the pointer of the particle in the cell
-        int index = findCellIndex(findCellIndices(part), n);
+        int index = findCellIndex(findCellIndices(part.p), n);
         cells[index].push_back(&part);
     }
 }
 
-std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const particle_element& part){
-    std::vector<size_t> indices = findCellIndices(part);
+std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const vcl::vec3& p){
+//    std::cout<< "Finding potential neighbors..." << std::endl;
+
+    std::vector<size_t> indices = findCellIndices(p);
+
     const int N = n;
     const int i = indices[0];
     const int j = indices[1];
     const int k = indices[2];
+
+//    std::cout<< "OK0" << std::endl;
 
     // TODO clean the code
 
@@ -416,41 +449,50 @@ std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const partic
             neighborsPointers.push_back(neighbor);
         }
     }
+//    std::cout<< "OK01" << std::endl;
     if(i-1>=0 && j-1>=0 && k+1<N){
         for(particle_element* neighbor: cells[(k+1)+n*(j-1)+n*n*(i-1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
+//    std::cout<< "OK02" << std::endl;
     if(i-1>=0 && j+1<N && k-1>=0){
         for(particle_element* neighbor: cells[(k-1)+n*(j+1)+n*n*(i-1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
+//    std::cout<< "OK03" << std::endl;
     if(i-1>=0 && j+1<N && k+1<N){
         for(particle_element* neighbor: cells[(k+1)+n*(j+1)+n*n*(i-1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
+//    std::cout<< "OK04" << std::endl;
     if(i+1<N && j-1>=0 && k-1>=0){
         for(particle_element* neighbor: cells[(k-1)+n*(j-1)+n*n*(i+1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
+//    std::cout<< "OK05" << std::endl;
     if(i+1<N && j-1>=0 && k+1<N){
         for(particle_element* neighbor: cells[(k+1)+n*(j-1)+n*n*(i+1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
+//    std::cout<< "OK06" << std::endl;
     if(i+1<N && j+1<N && k-1>=0){
         for(particle_element* neighbor: cells[(k-1)+n*(j+1)+n*n*(i+1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(i+1<N && j+1<N && k+1>=0){
+//    std::cout<< "OK07" << std::endl;
+    if(i+1<N && j+1<N && k+1<N){
         for(particle_element* neighbor: cells[(k+1)+n*(j+1)+n*n*(i+1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
+
+//    std::cout<< "OK1" << std::endl;
 
     // Edges, k fixed
     if(i-1>=0 && j-1>=0){
@@ -474,6 +516,8 @@ std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const partic
         }
     }
 
+//    std::cout<< "OK2" << std::endl;
+
     // Edges, i fixed
     if(k-1>=0 && j-1>=0){
         for(particle_element* neighbor: cells[(k-1)+n*(j-1)+n*n*i]){
@@ -496,6 +540,8 @@ std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const partic
         }
     }
 
+//    std::cout<< "OK3" << std::endl;
+
     // Edges, j fixed
     if(k-1>=0 && i-1>=0){
         for(particle_element* neighbor: cells[(k-1)+n*j+n*n*(i-1)]){
@@ -517,6 +563,8 @@ std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const partic
             neighborsPointers.push_back(neighbor);
         }
     }
+
+//    std::cout<< "OK4" << std::endl;
 
     // Centers
     if(i-1>=0){
@@ -549,6 +597,10 @@ std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const partic
             neighborsPointers.push_back(neighbor);
         }
     }
+
+//    std::cout<< "OK5" << std::endl;
+
+//    std::cout<< "Found all potential neighbors" << std::endl;
 
     return neighborsPointers;
 }

@@ -42,6 +42,7 @@ struct field_display
     vcl::image im;           // Image storage on CPU
     GLuint texture_id;       // Texture stored on GPU
     vcl::mesh_drawable quad; // Mesh used to display the texture
+    float voxel_influence;
 };
 
 // User parameters available in the GUI
@@ -57,7 +58,7 @@ class uniform_grid
 public:
     uniform_grid(){}
     uniform_grid(size_t n, const std::vector<float>& boundingBox, std::vector<particle_element>& particles); // Construct a grid in which each cell contains the pointers of the particles contained in the cell
-    std::vector<particle_element*> findPotentialNeighbors(const particle_element& part_i); // Using the acceleration structure to find potential neighbors of a particle for computing forces
+    std::vector<particle_element*> findPotentialNeighbors(const vcl::vec3& p); // Using the acceleration structure to find potential neighbors of a particle for computing forces
 
 private:
     size_t n; // Resolution of the grid
@@ -70,7 +71,7 @@ private:
     float zMin; // boundingBox[4]
     float zMax; // boundingBox[5]
 
-    std::vector<size_t> findCellIndices(const particle_element& part) const; // Find the index of the cell containing the particle
+    std::vector<size_t> findCellIndices(const vcl::vec3& p) const; // Find the index of the cell containing the particle
     inline size_t findCellIndex(std::vector<size_t> indices, size_t n){
         return indices[2]+indices[1]*n+indices[0]*n*n;
     }
@@ -84,8 +85,9 @@ struct scene_exercise : base_scene_exercise
     void display(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui);
 
     std::vector<particle_element> particles;
-    uniform_grid grid;
     sph_parameters sph_param;
+    uniform_grid sph_grid;
+    uniform_grid voxel_grid;
 
 
     void update_acceleration();
