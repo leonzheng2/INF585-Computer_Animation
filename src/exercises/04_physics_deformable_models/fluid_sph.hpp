@@ -4,6 +4,8 @@
 
 #ifdef EXERCISE_FLUID_SPH
 
+const float cube_size = 0.5;
+
 // Kernel
 
 double smoothKernel(vcl::vec3 p, float h);
@@ -98,6 +100,7 @@ struct scene_exercise : base_scene_exercise
     gui_parameters gui_param;
     field_display field_image;
     vcl::mesh_drawable sphere;
+    vcl::mesh_drawable voxel;
     vcl::segments_drawable borders;
 
     vcl::timer_event timer;
