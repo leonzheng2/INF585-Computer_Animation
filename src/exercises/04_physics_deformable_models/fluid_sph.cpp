@@ -402,6 +402,7 @@ uniform_grid::uniform_grid(size_t n, const std::vector<float>& boundingBox, std:
 
 std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const particle_element& part){
     std::vector<size_t> indices = findCellIndices(part);
+    const int N = n;
     const int i = indices[0];
     const int j = indices[1];
     const int k = indices[2];
@@ -415,37 +416,37 @@ std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const partic
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(i-1>=0 && j-1>=0 && k+1<n){
+    if(i-1>=0 && j-1>=0 && k+1<N){
         for(particle_element* neighbor: cells[(k+1)+n*(j-1)+n*n*(i-1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(i-1>=0 && j+1<n && k-1>=0){
+    if(i-1>=0 && j+1<N && k-1>=0){
         for(particle_element* neighbor: cells[(k-1)+n*(j+1)+n*n*(i-1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(i-1>=0 && j+1<n && k+1<n){
+    if(i-1>=0 && j+1<N && k+1<N){
         for(particle_element* neighbor: cells[(k+1)+n*(j+1)+n*n*(i-1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(i+1<n && j-1>=0 && k-1>=0){
+    if(i+1<N && j-1>=0 && k-1>=0){
         for(particle_element* neighbor: cells[(k-1)+n*(j-1)+n*n*(i+1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(i+1<n && j-1>=0 && k+1<n){
+    if(i+1<N && j-1>=0 && k+1<N){
         for(particle_element* neighbor: cells[(k+1)+n*(j-1)+n*n*(i+1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(i+1<n && j+1<n && k-1>=0){
+    if(i+1<N && j+1<N && k-1>=0){
         for(particle_element* neighbor: cells[(k-1)+n*(j+1)+n*n*(i+1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(i+1<n && j+1<n && k+1>=0){
+    if(i+1<N && j+1<N && k+1>=0){
         for(particle_element* neighbor: cells[(k+1)+n*(j+1)+n*n*(i+1)]){
             neighborsPointers.push_back(neighbor);
         }
@@ -457,17 +458,17 @@ std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const partic
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(i-1>=0 && j+1<n){
+    if(i-1>=0 && j+1<N){
         for(particle_element* neighbor: cells[k+n*(j+1)+n*n*(i-1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(i+1<n && j-1>=0){
+    if(i+1<N && j-1>=0){
         for(particle_element* neighbor: cells[k+n*(j-1)+n*n*(i+1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(i+1<n && j+1<n){
+    if(i+1<N && j+1<N){
         for(particle_element* neighbor: cells[k+n*(j+1)+n*n*(i+1)]){
             neighborsPointers.push_back(neighbor);
         }
@@ -479,17 +480,17 @@ std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const partic
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(k-1>=0 && j+1<n){
+    if(k-1>=0 && j+1<N){
         for(particle_element* neighbor: cells[(k-1)+n*(j+1)+n*n*i]){
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(k+1<n && j-1>=0){
+    if(k+1<N && j-1>=0){
         for(particle_element* neighbor: cells[(k+1)+n*(j-1)+n*n*i]){
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(k+1<n && j+1<n){
+    if(k+1<N && j+1<N){
         for(particle_element* neighbor: cells[(k+1)+n*(j+1)+n*n*i]){
             neighborsPointers.push_back(neighbor);
         }
@@ -501,17 +502,17 @@ std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const partic
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(k-1>=0 && i+1<n){
+    if(k-1>=0 && i+1<N){
         for(particle_element* neighbor: cells[(k-1)+n*j+n*n*(i+1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(k+1<n && i-1>=0){
+    if(k+1<N && i-1>=0){
         for(particle_element* neighbor: cells[(k+1)+n*j+n*n*(i-1)]){
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(k+1<n && i+1<n){
+    if(k+1<N && i+1<N){
         for(particle_element* neighbor: cells[(k+1)+n*j+n*n*(i+1)]){
             neighborsPointers.push_back(neighbor);
         }
@@ -523,7 +524,7 @@ std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const partic
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(i+1<n){
+    if(i+1<N){
         for(particle_element* neighbor: cells[k+n*j+n*n*(i+1)]){
             neighborsPointers.push_back(neighbor);
         }
@@ -533,7 +534,7 @@ std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const partic
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(j+1<n){
+    if(j+1<N){
         for(particle_element* neighbor: cells[k+n*(j+1)+n*n*i]){
             neighborsPointers.push_back(neighbor);
         }
@@ -543,7 +544,7 @@ std::vector<particle_element*> uniform_grid::findPotentialNeighbors(const partic
             neighborsPointers.push_back(neighbor);
         }
     }
-    if(k+1<n){
+    if(k+1<N){
         for(particle_element* neighbor: cells[(k+1)+n*j+n*n*i]){
             neighborsPointers.push_back(neighbor);
         }
