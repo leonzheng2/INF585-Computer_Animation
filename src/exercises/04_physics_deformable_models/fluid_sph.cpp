@@ -4,6 +4,7 @@
 #include "mctable.h"
 
 #include <random>
+#include <math.h>
 #include <string.h>
 
 #ifdef EXERCISE_FLUID_SPH
@@ -51,7 +52,10 @@ void scene_exercise::initialize_sph()
     const float m = rho0*h*h;
 
     // Rotation speed
-    const float omega = 0.01f;
+    const float omega = 0.0f;
+
+    // Rotation acceleration
+    const float rotation_acceleration = 4.f;
 
     // Initial particle spacing (relative to h)
     const float c = 1;
@@ -74,6 +78,7 @@ void scene_exercise::initialize_sph()
     sph_param.omega = omega;
     sph_param.c = c;
     sph_param.epsilon = epsilon;
+    sph_param.rotation_acceleration = rotation_acceleration;
 
     if (start_from_corners == 1) {
 
@@ -178,6 +183,19 @@ void scene_exercise::update_acceleration()
     }
 
     // Add centrifuge force
+    for(particle_element& part_i: particles)
+    {
+        const vec3 r = vec3(part_i.p.x, 0, part_i.p.z);
+        const vec3 f_centrifuge = pow(sph_param.omega, 2) * r;
+        part_i.a += f_centrifuge;
+    }
+
+    // Add a rotation force
+    for(particle_element& part_i: particles)
+    {
+        const vec3 r = vec3(part_i.p.x, 0, part_i.p.z) / sqrt(pow(part_i.p.x, 2) + pow(part_i.p.z, 2));
+        part_i.a += sph_param.rotation_acceleration * vec3(-r.z, 0, r.x);
+    }
 
 
 }

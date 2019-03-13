@@ -40,6 +40,7 @@ struct sph_parameters
     float scale_factor;
     float c;
     float epsilon;
+    float rotation_acceleration;
 };
 
 // Image used to display the water appearance
