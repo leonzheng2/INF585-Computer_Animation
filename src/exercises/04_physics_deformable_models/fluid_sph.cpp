@@ -1,7 +1,7 @@
 
 #include "fluid_sph.hpp"
 // #include "transvoxel.hpp"
-#include "mctable.h"
+//#include "mctable.h"
 
 #include <random>
 #include <string.h>
@@ -52,7 +52,7 @@ void scene_exercise::initialize_sph()
 
     // Initial particle spacing (relative to h)
     const float c = 1;
-    // const float c = 0.85f;
+//     const float c = 0.85f;
 
     // Scale the size of the particle cube
     const float scale_factor = 0.7;
@@ -82,7 +82,7 @@ void scene_exercise::initialize_sph()
 
 void scene_exercise::setup_data(std::map<std::string,GLuint>& shaders, scene_structure& , gui_structure& gui)
 {
-    gui.show_frame_camera = false;
+    gui.show_frame_camera = true;
     shaders["segment_immediate_mode"] = create_shader_program("shaders/segment_immediate_mode/segment_immediate_mode.vert.glsl","shaders/segment_immediate_mode/segment_immediate_mode.frag.glsl");
 
     sphere = mesh_drawable( mesh_primitive_sphere(1.0f));
@@ -219,7 +219,7 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
 
     // Grid structure for accelerate voxel
     int n = floor(cube_size * 2.2/(field_image.voxel_influence*1.1));
-    const int display_method = 2;
+    const int display_method = 1;
     std::vector<float> boundingBox;
     for(int i=0; i<3; i++){
         boundingBox.push_back(-1.1*cube_size);
@@ -230,7 +230,7 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
     // Update field image
     if(gui_param.display_field)
     {
-        const float resolution = 10;
+        const float resolution = 30;
         float voxel_size = 2 * cube_size / resolution;
         const float threshold = 3;
         voxel.uniform_parameter.scaling = voxel_size;
@@ -359,7 +359,7 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
                 z = -cube_size;
                 y = -cube_size;
                 x += voxel_size;
-            }
+
 
             liquid.position = new_position;
             liquid.normal.clear();
@@ -371,6 +371,8 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
             normal(liquid.position, liquid.connectivity, liquid.normal);
             mesh_drawable liquid_drawable = mesh_drawable(liquid);
             liquid_drawable.draw(shaders["mesh"], scene.camera);
+            }
+
         }
         // const size_t im_h = field_image.im.height;
         // const size_t im_w = field_image.im.width;
