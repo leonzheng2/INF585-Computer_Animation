@@ -71,6 +71,7 @@ void scene_exercise::initialize_sph()
     sph_param.stiffness = stiffness;
     sph_param.m = m;
     sph_param.scale_factor = scale_factor;
+    sph_param.omega = omega;
     sph_param.c = c;
     sph_param.epsilon = epsilon;
 
@@ -96,7 +97,6 @@ void scene_exercise::define_form(int form) {
             }
         }
     }
-    sph_param.omega = omega;
 }
 
 
