@@ -1,7 +1,7 @@
 
 #include "fluid_sph.hpp"
-// #include "transvoxel.hpp"
-//#include "mctable.h"
+#include "transvoxel.hpp"
+#include "mctable.h"
 
 #include <random>
 #include <string.h>
@@ -50,6 +50,9 @@ void scene_exercise::initialize_sph()
     // Total mass of a particle (consider rho0 h^2)
     const float m = rho0*h*h;
 
+    // Rotation speed
+    const float omega = 0.01f;
+
     // Initial particle spacing (relative to h)
     const float c = 1;
 //     const float c = 0.85f;
@@ -77,12 +80,13 @@ void scene_exercise::initialize_sph()
     sph_param.nu = nu;
     sph_param.stiffness = stiffness;
     sph_param.m = m;
+    sph_param.omega = omega;
 }
 
 
 void scene_exercise::setup_data(std::map<std::string,GLuint>& shaders, scene_structure& , gui_structure& gui)
 {
-    gui.show_frame_camera = true;
+    gui.show_frame_camera = false;
     shaders["segment_immediate_mode"] = create_shader_program("shaders/segment_immediate_mode/segment_immediate_mode.vert.glsl","shaders/segment_immediate_mode/segment_immediate_mode.frag.glsl");
 
     sphere = mesh_drawable( mesh_primitive_sphere(1.0f));
@@ -145,6 +149,9 @@ void scene_exercise::update_acceleration()
         }
         part_i.a += 2*sph_param.nu*f_viscosity;
     }
+
+    // Add centrifuge force
+
 
 }
 
@@ -232,7 +239,7 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
     {
         const float resolution = 20;
         float voxel_size = 2 * cube_size / resolution;
-        const float threshold = 3;
+        const float threshold = 0.2;
         voxel.uniform_parameter.scaling = voxel_size;
 
         if (display_method == 1) {

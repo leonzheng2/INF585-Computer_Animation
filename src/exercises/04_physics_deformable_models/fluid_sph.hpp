@@ -36,6 +36,7 @@ struct sph_parameters
     float m;     // total mass of a particle
     float stiffness; // constant of tait equation (relation density / pression)
     float nu;    // viscosity parameter
+    float omega; // Rotation speed
 };
 
 // Image used to display the water appearance
