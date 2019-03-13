@@ -1,7 +1,7 @@
 
 #include "fluid_sph.hpp"
-// #include "transvoxel.hpp"
-//#include "mctable.h"
+#include "transvoxel.hpp"
+#include "mctable.h"
 
 #include <random>
 #include <string.h>
@@ -42,7 +42,7 @@ void scene_exercise::initialize_sph()
     const float rho0 = 1000.0f;
 
     // Stiffness (consider ~2000 - used in tait equation)
-    const float stiffness = 2000.0f;
+    const float stiffness = 1750.0f;
 
     // Viscosity parameter
     const float nu = 0.05f;
@@ -55,28 +55,55 @@ void scene_exercise::initialize_sph()
 //     const float c = 0.85f;
 
     // Scale the size of the particle cube
-    const float scale_factor = 1;
+    const float scale_factor = 0.5;
 
     // Fill a square with particles
-    const float epsilon = 1e-3f;
-    for(float x=h; x<scale_factor*cube_size-h; x=x+c*h)
-    {
-        for(float y=-scale_factor*cube_size+h; y<0.0f-h; y=y+c*h)
-        {
-            for (float z=h; z < scale_factor*cube_size-h; z=z+c*h) {
-                particle_element particle;
-                particle.p = {x+epsilon*distrib(generator),y,z+epsilon * distrib(generator)}; // a zero value in z position will lead to a 2D simulation
-                particles.push_back(particle);
-            }
-        }
-    }
 
+    const int start_from_corners = 1;
+    const float epsilon = 1e-3f;
 
     sph_param.h = h;
     sph_param.rho0 = rho0;
     sph_param.nu = nu;
     sph_param.stiffness = stiffness;
     sph_param.m = m;
+    sph_param.scale_factor = scale_factor;
+    sph_param.c = c;
+    sph_param.epsilon = epsilon;
+
+    if (start_from_corners == 1) {
+
+        define_form(0, (vec3){-cube_size+2*h, cube_size-scale_factor*cube_size-h, -cube_size+2*h});
+        define_form(0, (vec3){cube_size-scale_factor*cube_size-h, cube_size-scale_factor*cube_size-h, -cube_size+2*h});
+        define_form(0, (vec3){cube_size-scale_factor*cube_size-h, cube_size-scale_factor*cube_size-h, cube_size-scale_factor*cube_size-h});
+        define_form(0, (vec3){-cube_size+2*h, cube_size-scale_factor*cube_size-h, cube_size-scale_factor*cube_size-h});
+
+    } else {
+
+        define_form(0, (vec3){h, -scale_factor*cube_size+h, h});
+
+    }
+}
+
+void scene_exercise::define_form(int form, vec3 base_position) {
+    // succession of particles.push_back instructions
+    float bpx = base_position.x;
+    float bpy = base_position.y;
+    float bpz = base_position.z;
+    if (form == 0) {
+        // square
+        for(float x=bpx; x<bpx+sph_param.scale_factor*cube_size-sph_param.h; x=x+sph_param.c*sph_param.h)
+        {
+            for(float y=bpy; y<bpy+sph_param.scale_factor*cube_size-sph_param.h; y=y+sph_param.c*sph_param.h)
+            {
+                for (float z=bpz; z < bpz+sph_param.scale_factor*cube_size-sph_param.h; z=z+sph_param.c*sph_param.h) {
+                    particle_element particle;
+                    particle.p = {x+sph_param.epsilon*distrib(generator),y,z+sph_param.epsilon * distrib(generator)}; // a zero value in z position will lead to a 2D simulation
+                    particles.push_back(particle);
+                }
+            }
+        }
+    }
 }
 
 
@@ -219,7 +246,7 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
 
     // Grid structure for accelerate voxel
     int n = floor(cube_size * 2.2/(field_image.voxel_influence*1.1));
-    const int display_method = 1;
+    const int display_method = 2;
     std::vector<float> boundingBox;
     for(int i=0; i<3; i++){
         boundingBox.push_back(-1.1*cube_size);
@@ -230,13 +257,14 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
     // Update field image
     if(gui_param.display_field)
     {
-        const float resolution = 20;
+        const float resolution = 30;
         float voxel_size = 2 * cube_size / resolution;
-        const float threshold = 3;
         voxel.uniform_parameter.scaling = voxel_size;
+        float threshold = 3;
 
         if (display_method == 1) {
             // voxel
+            threshold = 0.1;
             float x = -cube_size;
             float y = -cube_size;
             float z = -cube_size;
