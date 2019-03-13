@@ -37,6 +37,9 @@ struct sph_parameters
     float stiffness; // constant of tait equation (relation density / pression)
     float nu;    // viscosity parameter
     float omega; // Rotation speed
+    float scale_factor;
+    float c;
+    float epsilon;
 };
 
 // Image used to display the water appearance
@@ -98,6 +101,7 @@ struct scene_exercise : base_scene_exercise
     void update_pression();
 
     void initialize_sph();
+    void define_form(int form);
     void initialize_field_image();
     void set_gui();
     float evaluate_display_field(const vcl::vec3& p);
