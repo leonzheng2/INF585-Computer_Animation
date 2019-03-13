@@ -55,7 +55,7 @@ void scene_exercise::initialize_sph()
     // const float c = 0.85f;
 
     // Scale the size of the particle cube
-    const float scale_factor = 0.7;
+    const float scale_factor = 1;
 
     // Fill a square with particles
     const float epsilon = 1e-3f;
@@ -230,7 +230,7 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
     // Update field image
     if(gui_param.display_field)
     {
-        const float resolution = 10;
+        const float resolution = 20;
         float voxel_size = 2 * cube_size / resolution;
         const float threshold = 3;
         voxel.uniform_parameter.scaling = voxel_size;
@@ -450,7 +450,7 @@ float scene_exercise::evaluate_display_field(const vcl::vec3& p)
 
     const std::vector<particle_element*> neighbors = voxel_grid.findPotentialNeighbors(p);
 
-    std::cout << "Size of neighbors: " << neighbors.size() << std::endl;
+    // std::cout << "Size of neighbors: " << neighbors.size() << std::endl;
 
     size_t count = 0;
     for(size_t j=0; j<neighbors.size(); j++){
