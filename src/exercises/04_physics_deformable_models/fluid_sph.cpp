@@ -50,6 +50,9 @@ void scene_exercise::initialize_sph()
     // Total mass of a particle (consider rho0 h^2)
     const float m = rho0*h*h;
 
+    // Rotation speed
+    const float omega = 0.01f;
+
     // Initial particle spacing (relative to h)
     const float c = 1;
 //     const float c = 0.85f;
@@ -68,6 +71,7 @@ void scene_exercise::initialize_sph()
     sph_param.stiffness = stiffness;
     sph_param.m = m;
     sph_param.scale_factor = scale_factor;
+    sph_param.omega = omega;
     sph_param.c = c;
     sph_param.epsilon = epsilon;
 
@@ -109,7 +113,7 @@ void scene_exercise::define_form(int form, vec3 base_position) {
 
 void scene_exercise::setup_data(std::map<std::string,GLuint>& shaders, scene_structure& , gui_structure& gui)
 {
-    gui.show_frame_camera = true;
+    gui.show_frame_camera = false;
     shaders["segment_immediate_mode"] = create_shader_program("shaders/segment_immediate_mode/segment_immediate_mode.vert.glsl","shaders/segment_immediate_mode/segment_immediate_mode.frag.glsl");
 
     sphere = mesh_drawable( mesh_primitive_sphere(1.0f));
@@ -172,6 +176,9 @@ void scene_exercise::update_acceleration()
         }
         part_i.a += 2*sph_param.nu*f_viscosity;
     }
+
+    // Add centrifuge force
+
 
 }
 
