@@ -193,8 +193,10 @@ void scene_exercise::update_acceleration()
     // Add a rotation force
     for(particle_element& part_i: particles)
     {
-        const vec3 r = vec3(part_i.p.x, 0, part_i.p.z) / sqrt(pow(part_i.p.x, 2) + pow(part_i.p.z, 2));
-        part_i.a += sph_param.rotation_acceleration * vec3(-r.z, 0, r.x);
+        if(part_i.p.y < -cube_size + 2*sph_param.h){
+            const vec3 r = vec3(part_i.p.x, 0, part_i.p.z) / sqrt(pow(part_i.p.x, 2) + pow(part_i.p.z, 2));
+            part_i.a += sph_param.rotation_acceleration * vec3(-r.z, 0, r.x);
+        }
     }
 
 
@@ -282,7 +284,7 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
     // Update field image
     if(gui_param.display_field)
     {
-        const float resolution = 30;
+        const float resolution = 20;
         float voxel_size = 2 * cube_size / resolution;
         voxel.uniform_parameter.scaling = voxel_size;
         float threshold = 3;
