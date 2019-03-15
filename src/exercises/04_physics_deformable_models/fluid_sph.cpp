@@ -56,17 +56,18 @@ void scene_exercise::initialize_sph()
 
     // Rotation acceleration
     const float rotation_acceleration = 4.f;
+    // const float rotation_acceleration = 0.f;
 
     // Initial particle spacing (relative to h)
-    const float c = 1;
+    const float c = 0.8;
 //     const float c = 0.85f;
 
     // Scale the size of the particle cube
-    const float scale_factor = 0.5;
+    const float scale_factor = 0.7;
 
     // Fill a square with particles
 
-    const int start_from_corners = 1;
+    const int start_from_corners = 0;
     const float epsilon = 1e-3f;
 
     sph_param.h = h;
@@ -89,7 +90,7 @@ void scene_exercise::initialize_sph()
 
     } else {
 
-        define_form(0, (vec3){h, -scale_factor*cube_size+h, h});
+        define_form(0, (vec3){-scale_factor*cube_size/2+h, -h, -scale_factor*cube_size/2+h});
 
     }
 }
@@ -130,6 +131,7 @@ void scene_exercise::setup_data(std::map<std::string,GLuint>& shaders, scene_str
     borders.uniform_parameter.color = {0,0,0};
 
 
+    timer.stop();
     initialize_sph();
 //     initialize_field_image();
 
@@ -284,14 +286,14 @@ void scene_exercise::display(std::map<std::string,GLuint>& shaders, scene_struct
     // Update field image
     if(gui_param.display_field)
     {
-        const float resolution = 20;
+        const float resolution = 30;
         float voxel_size = 2 * cube_size / resolution;
         voxel.uniform_parameter.scaling = voxel_size;
         float threshold = 3;
 
         if (display_method == 1) {
             // voxel
-            threshold = 0.1;
+            threshold = 0.75;
             float x = -cube_size;
             float y = -cube_size;
             float z = -cube_size;
