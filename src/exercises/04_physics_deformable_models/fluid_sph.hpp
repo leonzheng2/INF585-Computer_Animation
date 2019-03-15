@@ -6,6 +6,7 @@
 #ifdef EXERCISE_FLUID_SPH
 
 const float cube_size = 0.5;
+const int display_method = 2;
 
 // Kernel
 
@@ -65,11 +66,11 @@ class uniform_grid
 public:
     uniform_grid(){}
     uniform_grid(size_t n, const std::vector<float>& boundingBox, std::vector<particle_element>& particles); // Construct a grid in which each cell contains the pointers of the particles contained in the cell
-    std::vector<particle_element*> findPotentialNeighbors(const vcl::vec3& p); // Using the acceleration structure to find potential neighbors of a particle for computing forces
+    std::vector<particle_element*> findPotentialNeighbors(const vcl::vec3& p); // Using the acceleration structure to find potential neighbors of a given point
 
 private:
     size_t n; // Resolution of the grid
-    std::vector<std::vector<particle_element*>> cells; // n*n cells, each cell contains the pointers of the particles contained in the cell
+    std::vector<std::vector<particle_element*>> cells; // n*n*n cells, each cell contains the pointers of the particles contained in the cell
     // Bounding box of all particles
     float xMin; // boundingBox[0]
     float xMax; // boundingBox[1]
@@ -78,8 +79,8 @@ private:
     float zMin; // boundingBox[4]
     float zMax; // boundingBox[5]
 
-    std::vector<size_t> findCellIndices(const vcl::vec3& p) const; // Find the index of the cell containing the particle
-    inline size_t findCellIndex(std::vector<size_t> indices, size_t n){
+    std::vector<size_t> findCellIndices(const vcl::vec3& p) const; // Find the indices (i, j, k) of the cell containing the point p
+    inline size_t findCellIndex(std::vector<size_t> indices, size_t n){ // Find the corresponding index of the cells vector
         return indices[2]+indices[1]*n+indices[0]*n*n;
     }
 };
@@ -97,12 +98,12 @@ struct scene_exercise : base_scene_exercise
     uniform_grid voxel_grid;
 
 
-    void update_acceleration();
-    void update_density();
-    void update_pression();
+    void update_acceleration(); // Update particles acceleration
+    void update_density(); // Update local density, using SPH
+    void update_pression(); // Update local pression
 
-    void initialize_sph();
-    void define_form(int form, vcl::vec3 base_position);
+    void initialize_sph(); // Choose parameters for SPH simulation
+    void define_form(int form, vcl::vec3 base_position); // Define the initial form of the fluid at the begining of the simulation
     void initialize_field_image();
     void set_gui();
     float evaluate_display_field(const vcl::vec3& p);
