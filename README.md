@@ -7,4 +7,6 @@ To change the parameters for fluid simulation, please change the variables in th
 
 At the beginning of the file "fluid_sph.hpp", one can change cube_size and display_method. Choose 1 to visualize voxels, and 2 for marching cubes.
 
-![Fluid rendering with voxel](https://github.com/leonzheng2/INF585-Computer_Animation/raw/master/fluid_voxel.png "Fluid rendering with voxel")
+![Fluid rendering with voxel](https://github.com/leonzheng2/INF585-Computer_Animation/blob/master/fluid_voxel2.png "Fluid rendering with voxel")
+
+![Fluid rendering with marching cubes](https://github.com/leonzheng2/INF585-Computer_Animation/blob/master/fluid_mc.png "Fluid rendering with voxel")
